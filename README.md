@@ -50,7 +50,10 @@ CIFAR-100 | ResNet-50, Semi-Supervisied learning(WORK IN PROCESS) | | |
   - We will solve this problem !!
   
 ## Requirements
-
+- tqdm==4.31.1
+- torch==1.0.1
+- opencv version: 4.1.0
+- 
 
 ## Reference
 - [ResNet 50 Network github](https://github.com/weiaicunzai/pytorch-cifar100)
