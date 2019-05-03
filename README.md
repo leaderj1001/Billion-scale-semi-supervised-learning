@@ -14,8 +14,28 @@
 - Step 4:
   - finally, pre-trained student model is fine-tuned on the initial labeled data to circumvent potential labeling errors.
 
-## Progress
-- We Implementing Step 3.
+## Useage
+- Step 1:
+  - If there is a pretrained weight of the teacher network, go to step 2.
+  - If you do not have pretrained weights, run the following command to train the teacher network.
+  ```
+  python main.py
+  ```
+- Step 2:
+  - Sampling unlabeled data through a pretrained teacher network.
+  ```
+  python make_sample_data.py
+  ```
+- Step 3:
+  - Students learn the student network using the data sampled in Step 2.
+  ```
+  python student_train.py
+  ```
+- Step 4:
+  - Finally, fine-tuning the CIFAR-100 data using the student network trained using unlabeled data in Step 3.
+  ```
+  python main.py --student-network True
+  ```
 
 ## Reference
 - [ResNet 50 Network github](https://github.com/weiaicunzai/pytorch-cifar100)
