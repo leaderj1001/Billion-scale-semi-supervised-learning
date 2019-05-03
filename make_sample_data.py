@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import cv2
 import numpy as np
 import os
@@ -14,8 +15,21 @@ use_cuda = torch.cuda.is_available()
 device = torch.device('cuda' if use_cuda else 'cpu')
 
 
+def get_args():
+    parser = argparse.ArgumentParser("parameters")
+
+    parser.add_argument('--p', type=int, default=7)
+    parser.add_argument('--k', type=int, default=1000)
+    parser.add_argument('--batch-size', type=int, default=100)
+    parser.add_argument('--input-size', type=tuple, default=(32, 32))
+    parser.add_argument('--load-pretrained', type=bool, default=True)
+
+    args = parser.parse_args()
+
+    return args
+
+
 def batch_iterator(image_list, batch_size=100, shape=(32, 32)):
-    index = 0
     random.shuffle(image_list)
     while len(image_list) != 0:
         batch_keys = image_list[:batch_size]
@@ -66,25 +80,25 @@ def data_sampling(model, args):
             "lawn-mower", "rocket", "streetcar", "tank", "tractor"
         ]
         for each_class in classes:
-            print(each_class)
+            print("class name: ", each_class)
             download_path = "C:/Users/myeongjun/github/AutoCrawler/download/"
             if os.path.isdir(download_path + each_class):
                 image_path = download_path + each_class + "/*.jpg"
                 all_image_path = glob.glob(image_path)
-                print(len(all_image_path))
-                for batch_image, batch_image_path in batch_iterator(all_image_path):
+                print("image data count: ", len(all_image_path))
+                for batch_image, batch_image_path in batch_iterator(all_image_path, args.batch_size, args.input_size):
                     batch_image = torch.cuda.FloatTensor(batch_image)
 
                     output = model(batch_image)
-                    _, top_p = output.topk(maxk, 1, True, True)
-                    # print(batch_image.shape, batch_image_path[0])
+                    softmax_output = F.softmax(output, dim=-1)
+                    _, top_p = softmax_output.topk(maxk, 1, True, True)
                     # print(top_p.t())
 
                     # make sampling dictionary
                     for top in top_p.t():
                         for idx, i in enumerate(top):
                             num = i.data.cpu().numpy()
-                            value = float(output[idx][i].data.cpu().numpy())
+                            value = float(softmax_output[idx][i].data.cpu().numpy())
                             if str(num) in sampling_dictionary:
                                 sampling_dictionary[str(num)].append([batch_image_path[idx], value])
                             else:
@@ -98,44 +112,42 @@ def data_sampling(model, args):
 
 
 def select_top_k(k=1000):
-    selected_image = {}
-    selected_image["all"] = []
+    sampled_image_dict = {}
+    sampled_image_dict["all"] = []
     with codecs.open("./sampling_dict.json", "r", encoding="utf-8", errors="ignore") as f:
         load_data = json.load(f)
 
         for key in load_data.keys():
-            print(key)
+            print("label: ", key)
             all_items = load_data[key]
             all_items.sort(key=lambda x: x[1], reverse=True)
             all_items = np.array(all_items)
-            print(len(all_items))
+            print("each label item count: ", len(all_items))
             for index in range(0, k):
-                # print(all_items[index][0], int(key))
-                selected_image["all"].append([all_items[index][0], int(key)])
+                sampled_image_dict["all"].append([all_items[index][0], int(key)])
 
-    j = json.dumps(selected_image)
+    print("Saving.. selected image json")
+    j = json.dumps(sampled_image_dict)
     with open("selected_image.json", "w") as f:
         f.write(j)
 
 
-def main():
-    parser = argparse.ArgumentParser("parameters")
+def main(args):
+    if args.load_pretrained:
+        model = resnet50().to(device)
+        filename = "Best_model_"
+        checkpoint = torch.load('./checkpoint/' + filename + 'ckpt.t7')
+        model.load_state_dict(checkpoint['model'])
+        epoch = checkpoint['epoch']
+        acc = checkpoint['acc']
+        print("Load Model Accuracy: ", acc, "Load Model end epoch: ", epoch)
 
-    parser.add_argument('--p', type=int, default=3)
-
-    args = parser.parse_args()
-
-    model = resnet50().to(device)
-    filename = "Best_model_"
-    checkpoint = torch.load('./checkpoint/' + filename + 'ckpt.t7')
-    model.load_state_dict(checkpoint['model'])
-    epoch = checkpoint['epoch']
-    acc = checkpoint['acc']
-    print("Load Model Accuracy: ", acc, "Load Model end epoch: ", epoch)
-
-    data_sampling(model, args)
-    select_top_k()
+        data_sampling(model, args)
+        select_top_k(args.k)
+    else:
+        assert args.load_pretrained == True, "You must have the weights of the pretrained model."
 
 
 if __name__ == "__main__":
-    main()
+    args = get_args()
+    main(args)
