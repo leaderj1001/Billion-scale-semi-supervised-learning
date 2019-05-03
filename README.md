@@ -14,7 +14,7 @@
 - Step 4:
   - finally, pre-trained student model is fine-tuned on the initial labeled data to circumvent potential labeling errors.
 
-## Useage
+## Usage
 - Step 1:
   - If there is a pretrained weight of the teacher network, go to step 2.
   - If you do not have pretrained weights, run the following command to train the teacher network.
