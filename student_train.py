@@ -9,11 +9,26 @@ import argparse
 import json
 import random
 import codecs
+import time
 
 from model import resnet50
 
 use_cuda = torch.cuda.is_available()
 device = torch.device('cuda' if use_cuda else 'cpu')
+
+
+def get_args():
+    parser = argparse.ArgumentParser('parameters')
+
+    parser.add_argument('--epochs', type=int, default=100, help='number of epochs, (default: 100)')
+    parser.add_argument('--learning-rate', type=float, default=1e-1, help='learning rate, (default: 1e-1)')
+    parser.add_argument('--batch-size', type=int, default=100, help='batch size, (default: 100)')
+    parser.add_argument('--dataset-mode', type=str, default="CIFAR100", help='dataset, (default: CIFAR100)')
+    parser.add_argument('--input-size', type=tuple, default=(32, 32), help='input data size, (default: (32, 32))')
+
+    args = parser.parse_args()
+
+    return args
 
 
 def adjust_learning_rate(optimizer, epoch, args):
@@ -55,7 +70,7 @@ def train(model, optimizer, criterion, epoch, args):
     step = 0
     train_loss = 0
     train_acc = 0
-    for batch_image, batch_label in unlabeled_batch_iterator():
+    for batch_image, batch_label in unlabeled_batch_iterator(args.batch_size, args.input_size):
         adjust_learning_rate(optimizer, epoch, args)
         data, target = torch.cuda.FloatTensor(batch_image), torch.cuda.LongTensor(batch_label)
 
@@ -75,38 +90,39 @@ def train(model, optimizer, criterion, epoch, args):
             for param_group in optimizer.param_groups:
                 print(",  Current learning rate is: {}".format(param_group['lr']))
 
-    return train_loss / 150000, train_acc / 150000
+    return train_loss / 24, train_acc / 24
 
 
-def main():
-    parser = argparse.ArgumentParser('parameters')
-
-    parser.add_argument('--epochs', type=int, default=100, help='number of epochs, (default: 100)')
-    parser.add_argument('--learning-rate', type=float, default=1e-1, help='learning rate, (default: 1e-1)')
-    parser.add_argument('--batch-size', type=int, default=100, help='batch size, (default: 100)')
-    parser.add_argument('--model-mode', type=str, default="CIFAR100",
-                        help='CIFAR10, CIFAR100, SMALL_REGIME, REGULAR_REGIME, (default: CIFAR10)')
-    parser.add_argument('--dataset-mode', type=str, default="CIFAR100",
-                        help='Which dataset to use? (Example, CIFAR10, CIFAR100, MNIST), (default: CIFAR10)')
-    parser.add_argument('--is-train', type=bool, default=True, help="True if training, False if test. (default: True)")
-    parser.add_argument('--drop-path', type=float, default=0.1,
-                        help="regularization by disconnecting between random graphs,")
-    parser.add_argument('--load-model', type=bool, default=True)
-    parser.add_argument('--unlabeled-dir', type=str, default="C:/Users/myeongjun/github/AutoCrawler/download/")
-    parser.add_argument('--image-dir', type=str, default="")
-    parser.add_argument('--p', type=int, default=3)
-
-    args = parser.parse_args()
-
+def main(args):
     model = resnet50().to(device)
 
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=5e-4, momentum=0.9)
     criterion = nn.CrossEntropyLoss().to(device)
 
+    start_time = time.time()
+    max_train_acc = 0
     for epoch in range(1, args.epochs + 1):
         train_loss, train_acc = train(model, optimizer, criterion, epoch, args)
-        print(train_loss, train_acc)
+        print('train set accuracy: {0:.2f}%, Best train accuracy: {1:.2f}%'.format(train_acc, max_train_acc))
+        if max_train_acc < train_acc:
+            print('Saving..')
+            state = {
+                'model': model.state_dict(),
+                'acc': train_acc,
+                'epoch': epoch,
+            }
+            if not os.path.isdir('checkpoint'):
+                os.mkdir('checkpoint')
+            filename = "student_network_Best_model_"
+            torch.save(state, './checkpoint/' + filename + 'ckpt.t7')
+            max_train_acc = train_acc
+
+        time_interval = time.time() - start_time
+        time_split = time.gmtime(time_interval)
+        print("Training time: ", time_interval, "Hour: ", time_split.tm_hour, "Minute: ", time_split.tm_min, "Second: ",
+              time_split.tm_sec)
 
 
 if __name__ == "__main__":
-    main()
+    args = get_args()
+    main(args)
