@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -8,7 +7,6 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingL
 
 import argparse
 import os
-
 import time
 from tqdm import tqdm
 
@@ -17,6 +15,20 @@ from preprocess import load_data
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
+
+
+def get_args():
+    parser = argparse.ArgumentParser('parameters')
+
+    parser.add_argument('--epochs', type=int, default=100, help='number of epochs, (default: 100)')
+    parser.add_argument('--learning-rate', type=float, default=1e-1, help='learning rate, (default: 1e-1)')
+    parser.add_argument('--batch-size', type=int, default=100, help='batch size, (default: 100)')
+    parser.add_argument('--dataset-mode', type=str, default="CIFAR100", help='dataset, (default: CIFAR100)')
+    parser.add_argument('--student-network', type=bool, default=False, help='if proceeding with step 1 (False), if proceeding with step 4.(True), (default: False)')
+
+    args = parser.parse_args()
+
+    return args
 
 
 # reference,
@@ -71,7 +83,6 @@ def train(model, train_loader, optimizer, criterion, epoch, args):
             for param_group in optimizer.param_groups:
                 print(",  Current learning rate is: {}".format(param_group['lr']))
 
-    # layer_visualize(data[0], c2[0], c3[0], c4[0], epoch)
     length = len(train_loader.dataset) // args.batch_size
     return train_loss / length, train_acc / length
 
@@ -90,25 +101,12 @@ def get_test(model, test_loader):
     return acc
 
 
-def main():
-    parser = argparse.ArgumentParser('parameters')
-
-    parser.add_argument('--epochs', type=int, default=100, help='number of epochs, (default: 100)')
-    parser.add_argument('--learning-rate', type=float, default=1e-1, help='learning rate, (default: 1e-1)')
-    parser.add_argument('--batch-size', type=int, default=100, help='batch size, (default: 100)')
-    parser.add_argument('--model-mode', type=str, default="CIFAR100", help='CIFAR10, CIFAR100, SMALL_REGIME, REGULAR_REGIME, (default: CIFAR10)')
-    parser.add_argument('--dataset-mode', type=str, default="CIFAR100", help='Which dataset to use? (Example, CIFAR10, CIFAR100, MNIST), (default: CIFAR10)')
-    parser.add_argument('--is-train', type=bool, default=True, help="True if training, False if test. (default: True)")
-    parser.add_argument('--drop-path', type=float, default=0.1, help="regularization by disconnecting between random graphs,")
-    parser.add_argument('--load-model', type=bool, default=False)
-
-    args = parser.parse_args()
-
+def main(args):
     train_loader, test_loader = load_data(args)
 
-    if args.load_model:
+    if args.student_network:
         model = resnet50().to(device)
-        filename = "Best_model_"
+        filename = "student_network_Best_model_"
         checkpoint = torch.load('./checkpoint/' + filename + 'ckpt.t7')
         model.load_state_dict(checkpoint['model'])
         epoch = checkpoint['epoch']
@@ -163,4 +161,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    args = get_args()
+    main(args)
