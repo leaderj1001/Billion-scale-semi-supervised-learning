@@ -36,6 +36,21 @@
   ```
   python main.py --student-network True
   ```
+## Experiments
+- In the paper, K=16k, P=10, Dataset=ImageNet, Unlabeled Data: 1,000,000,000 images.
+- However, we do not have many GPUs, so we are training at CIFAR-100.
+  - Ours) K=1000, P=10, Dataset=CIFAR-100, Unlabeled Data: About 150,000 images.
+  
+| Datasets | Model | Accuracy | Epoch | Training Time |
+| :---: | :---: | :---: | :---: | :---: |
+CIFAR-100 | ResNet-50 | 76.36% | 91 | 3h 31m
+CIFAR-100 | ResNet-50, Semi-Supervisied learning(WORK IN PROCESS) | | |
+
+- For CIFAR-100 data, the image size is too small, so the result is not good when the unlabeled data is reduced to (32, 32).
+  - We will solve this problem !!
+  
+## Requirements
+
 
 ## Reference
 - [ResNet 50 Network github](https://github.com/weiaicunzai/pytorch-cifar100)
