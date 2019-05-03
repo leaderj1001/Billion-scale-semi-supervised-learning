@@ -18,10 +18,10 @@ device = torch.device('cuda' if use_cuda else 'cpu')
 def get_args():
     parser = argparse.ArgumentParser("parameters")
 
-    parser.add_argument('--p', type=int, default=7)
-    parser.add_argument('--k', type=int, default=1000)
-    parser.add_argument('--batch-size', type=int, default=100)
-    parser.add_argument('--input-size', type=tuple, default=(32, 32))
+    parser.add_argument('--p', type=int, default=10, help='P being a parameter accounting for the fact that we expect only a few number of relevant classes to occur in each image. (default: 10)')
+    parser.add_argument('--k', type=int, default=1000, help=', there is an important trade-off on K that strongly depends on the ratio K/M. (default: 1000)')
+    parser.add_argument('--batch-size', type=int, default=100, help='batch size, (default: 100)')
+    parser.add_argument('--input-size', type=tuple, default=(32, 32), help='input data size, (default: (32, 32))')
     parser.add_argument('--load-pretrained', type=bool, default=True)
 
     args = parser.parse_args()
