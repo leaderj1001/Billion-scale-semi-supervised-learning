@@ -36,6 +36,10 @@
   ```
   python main.py --student-network True
   ```
+
+### Unlabeled Data
+- Image crawler
+
 ## Experiments
 - In the paper, K=16k, P=10, Dataset=ImageNet, Unlabeled Data: 1,000,000,000 images.
 - However, we do not have many GPUs, so we are training at CIFAR-100.
